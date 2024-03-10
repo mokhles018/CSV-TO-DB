@@ -6,7 +6,7 @@ import csv from 'csv-parser';
 
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 
 // Middleware for parsing JSON requests
 app.use(express.json());
