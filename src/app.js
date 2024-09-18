@@ -1,4 +1,5 @@
 import express from "express";
+import dotenv from "dotenv";
 import { MongoClient } from "mongodb";
 import fs from 'fs';
 import csv from 'csv-parser';
@@ -6,6 +7,7 @@ import csv from 'csv-parser';
 
 
 const app = express();
+dotenv.config()
 const port = process.env.PORT || 3000;
 
 // Middleware for parsing JSON requests
@@ -13,7 +15,7 @@ app.use(express.json());
 
 
 
-const mongoURI = 'mongodb+srv://kashem:dFP0NhtOblDuEGJt@cluster0.hmmua.mongodb.net/uprankly_dev';
+const mongoURI = process.env.DATABASE_URL;
 
 const client = new MongoClient(mongoURI);
 
@@ -31,16 +33,16 @@ async function connectToDatabase() {
     });
 
 
-    {/* categories collection crud */}
-    app.get('/categories', async (req, res) => {
+    {/* categories collection crud */ }
+    app.get('/category', async (req, res) => {
       const results = await categoriesCollection.find().toArray();
       res.send(results);
     })
     // Add categories
-    app.post('/categories', async (req, res) => {
+    app.post('/category', async (req, res) => {
       const categories = [];
 
-      fs.createReadStream('categories.csv')
+      fs.createReadStream('category.csv')
         .pipe(csv())
         .on('data', (data) => categories.push(data))
         .on('end', async () => {
@@ -48,47 +50,56 @@ async function connectToDatabase() {
           const results = await categoriesCollection.insertMany(categories);
 
           res.send(results);
-          console.log(results);
         });
     })
 
 
-    {/* niches collection crud */}
-    app.get('/niches', async (req, res) => {
+    {/* niches collection crud */ }
+    app.get('/niche', async (req, res) => {
       const result = await nichesCollection.find().toArray();
       res.send(result);
     });
 
     // add niches
 
-    app.post('/niches', async (req, res) => {
+    app.post('/niche', async (req, res) => {
       const niches = [];
+      const updatedNiches = [];
+      // const categoryName = []
+      const categories = await categoriesCollection.find({}).toArray()
+      // category finder
+      const getCategoriesId = (name) => {
+        const category = categories.find(item => item.name === name);
+        return category
+      }
 
-      fs.createReadStream('niches.csv')
+      fs.createReadStream('niche.csv')
         .pipe(csv())
         .on('data', (data) => niches.push(data))
         .on('end', async () => {
-          console.log(niches);
-          const results = await nichesCollection.insertMany(niches);
-
-          res.send(results);
-          console.log(results);
+          niches.map(item => {
+            updatedNiches.push({ name: item?.name, categoryId: getCategoriesId(item.category)._id })
+          })
+          const results = await nichesCollection.insertMany(updatedNiches);
+          // console.log(updatedNiches.length);
+          res.send(updatedNiches);
         });
     })
 
-    {/* sites collection crud */}
 
-    app.get('/sites', async (req, res) => {
+    {/* sites collection crud */ }
+
+    app.get('/site', async (req, res) => {
       const result = await sitesCollection.find().toArray();
       res.send(result);
     });
 
     // insert sites in db
 
-    app.post('/sites', async (req, res) => {
+    app.post('/site', async (req, res) => {
       const sites = [];
 
-      fs.createReadStream('sites.csv')
+      fs.createReadStream('site.csv')
         .pipe(csv())
         .on('data', (data) => sites.push(data))
         .on('end', async () => {
@@ -101,7 +112,6 @@ async function connectToDatabase() {
             lastUpdatedAt: new Date()
           }));
           const results = await sitesCollection.insertMany(convertedData);
-          console.log(results)
 
           res.send(results);
         });
